@@ -1,0 +1,108 @@
+[
+  {
+    "id": 1,
+    "topic": "Machine Learning Basics",
+    "type": "mcq",
+    "question": "Which of the following is a type of machine learning?",
+    "options": [
+      "Supervised learning",
+      "Unsupervised learning",
+      "Reinforcement learning",
+      "All of the above"
+    ],
+    "answer": "All of the above"
+  },
+  {
+    "id": 2,
+    "topic": "Machine Learning Basics",
+    "type": "mcq",
+    "question": "In supervised learning, the model is trained using:",
+    "options": [
+      "Unlabeled data",
+      "Partially labeled data",
+      "Labeled data",
+      "No data"
+    ],
+    "answer": "Labeled data"
+  },
+  {
+    "id": 3,
+    "topic": "Machine Learning Basics",
+    "type": "true_false",
+    "question": "Linear regression can be used for predicting continuous values.",
+    "answer": "True"
+  },
+  {
+    "id": 4,
+    "topic": "Machine Learning Basics",
+    "type": "mcq",
+    "question": "Which algorithm is commonly used for classification tasks?",
+    "options": [
+      "K-Means",
+      "Decision Tree",
+      "Apriori",
+      "PCA"
+    ],
+    "answer": "Decision Tree"
+  },
+  {
+    "id": 5,
+    "topic": "Machine Learning Basics",
+    "type": "mcq",
+    "question": "What does “overfitting” mean in a model?",
+    "options": [
+      "Model performs well on training data but poorly on new data.",
+      "Model performs well on both training and test data.",
+      "Model performs poorly on all data.",
+      "Model has too few parameters."
+    ],
+    "answer": "Model performs well on training data but poorly on new data."
+  },
+  {
+    "id": 6,
+    "topic": "Python Fundamentals",
+    "type": "mcq",
+    "question": "Which keyword is used to define a function in Python?",
+    "options": [
+      "func",
+      "def",
+      "define",
+      "function"
+    ],
+    "answer": "def"
+  },
+  {
+    "id": 7,
+    "topic": "Python Fundamentals",
+    "type": "true_false",
+    "question": "In Python, lists are immutable.",
+    "answer": "False"
+  },
+  {
+    "id": 8,
+    "topic": "Python Fundamentals",
+    "type": "mcq",
+    "question": "What is the output of print(type(5))?",
+    "options": [
+      "<class 'string'>",
+      "<class 'int'>",
+      "<class 'float'>",
+      "<class 'number'>"
+    ],
+    "answer": "<class 'int'>"
+  },
+  {
+    "id": 9,
+    "topic": "AI and NLP Concepts",
+    "type": "short_answer",
+    "question": "What is the purpose of preprocessing text before AI processing?",
+    "answer": "To clean and prepare data by removing noise, stop words, and irrelevant symbols for better model accuracy."
+  },
+  {
+    "id": 10,
+    "topic": "StudyBuddy System",
+    "type": "short_answer",
+    "question": "How does the StudyBuddy AI personalize quizzes?",
+    "answer": "It analyzes the uploaded material, identifies key topics, and generates context-based questions of varying difficulty."
+  }
+]
