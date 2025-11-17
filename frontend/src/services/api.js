@@ -1,29 +1,26 @@
 // src/services/api.js
 export async function uploadPdf(file) {
-  const form = new FormData();
-  form.append("file", file);
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const res = await fetch("/api/upload", {
+  const res = await fetch("http://localhost:8000/upload", {
     method: "POST",
-    body: form
+    body: formData
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || "Upload failed");
+    const text = await res.text();
+    throw new Error(text || "Upload failed");
   }
-  return res.json(); // expects quiz JSON
+
+  return await res.json(); // { success: true }
 }
 
-export async function submitAnswers(quizId, answers) {
-  const res = await fetch("/api/quiz/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quizId, answers })
-  });
+export async function fetchGeneratedQuiz() {
+  const res = await fetch("http://localhost:8000/quiz");
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || "Submit failed");
+    const text = await res.text();
+    throw new Error(text || "Could not fetch generated quiz");
   }
-  return res.json(); // expects {score, total, feedback}
+  return await res.json(); // backend's quiz JSON
 }

@@ -1,98 +1,202 @@
 import React, { useState } from "react";
-import { submitAnswers } from "../services/api";
 
-function Quiz({ quiz, onSubmitResult, onBack }) {
-  const [answers, setAnswers] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+function Quiz({ questions, onComplete }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState({});
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [score, setScore] = useState(0);
 
-  function handleChange(questionId, value) {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-
-    let score = 0;
-    const total = quiz.questions.length;
-
-    quiz.questions.forEach((q) => {
-      const userAns = (answers[q.id] || "").toString().trim().toLowerCase();
-      const correctAns = q.answer?.toString().trim().toLowerCase();
-
-      if (userAns === correctAns) {
-        score++;
-      }
-    });
-
-    const result = {
-      score,
-      total,
-      feedback: `You scored ${score} out of ${total}.`,
-    };
-
-    // MUST MATCH App.jsx
-    onSubmitResult(result);
-  }
-
-  return (
-    <div className="i shld put scroll">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">{quiz.title || "Generated Quiz"}</h2>
-        <button onClick={onBack} className="text-sm text-slate-600 underline">Upload another</button>
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="backdrop-blur-lg bg-white/20 p-6 rounded-lg shadow-md text-center">
+        <p className="text-gray-600">No questions available.</p>
       </div>
+    );
+  }
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+  const currentQuestion = questions[currentIndex];
+  const isLastQuestion = currentIndex === questions.length - 1;
 
-        {quiz.questions.map((q, idx) => (
-          <div key={q.id} className="p-4 border rounded bg-slate-50">
-            <div className="font-medium mb-2">Q{idx + 1}. {q.text}</div>
+  const handleAnswer = (answer) => {
+    setUserAnswers({ ...userAnswers, [currentIndex]: answer });
+    setShowExplanation(true);
 
-            {/* MCQ */}
-            {q.type === "mcq" && q.options && (
-              <div className="space-y-2">
-                {q.options.map((opt, i) => (
-                  <label key={i} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={q.id}
-                      value={opt}
-                      checked={answers[q.id] === opt}
-                      onChange={() => handleChange(q.id, opt)}
-                      className="form-radio"
-                    />
-                    <span>{opt}</span>
-                  </label>
-                ))}
-              </div>
-            )}
+    // Check if answer is correct for MCQ
+    if (currentQuestion.type === "mcq" && answer === currentQuestion.answer_letter) {
+      setScore((prev) => prev + 1);
+    }
+  };
 
-            {/* OPEN ENDED */}
-            {q.type === "open" && (
-              <textarea
-                rows={4}
-                value={answers[q.id] || ""}
-                onChange={e => handleChange(q.id, e.target.value)}
-                className="w-full mt-2 p-2 border rounded resize-y"
-              />
+  const handleNext = () => {
+    setShowExplanation(false);
+    if (isLastQuestion) {
+      onComplete();
+    } else {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const renderQuestion = () => {
+    switch (currentQuestion.type) {
+      case "mcq":
+        return (
+          <div className="space-y-3">
+            {Object.entries(currentQuestion.choices || {}).map(([letter, text]) => (
+              <button
+                key={letter}
+                onClick={() => handleAnswer(letter)}
+                disabled={showExplanation}
+                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                  showExplanation
+                    ? letter === currentQuestion.answer_letter
+                      ? "border-green-500 bg-green-50"
+                      : userAnswers[currentIndex] === letter
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-200 bg-gray-50"
+                    : "border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
+                } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                <span className="font-semibold">{letter})</span> {text}
+              </button>
+            ))}
+          </div>
+        );
+
+      case "tf":
+        return (
+          <div className="space-y-3">
+            {["True", "False"].map((option) => (
+              <button
+                key={option}
+                onClick={() => {
+                  if (!showExplanation) {
+                    setUserAnswers({ ...userAnswers, [currentIndex]: option });
+
+                    if (option === currentQuestion.answer) {
+                      setScore((prev) => prev + 1);
+                    }
+
+                    setShowExplanation(true);
+                  }
+                }}
+                disabled={showExplanation}
+                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                  showExplanation
+                    ? option === currentQuestion.answer
+                      ? "border-green-500 bg-green-50"
+                      : userAnswers[currentIndex] === option
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-200 bg-gray-50"
+                    : "border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
+                } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+
+      case "short":
+        return (
+          <div>
+            <p className="mb-2 font-medium">{currentQuestion.question}</p>
+            <input
+              type="text"
+              placeholder="Type your answer here..."
+              className="w-full border-2 border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              value={userAnswers[currentIndex] || ""}
+              disabled={showExplanation}
+              onChange={(e) =>
+                setUserAnswers({ ...userAnswers, [currentIndex]: e.target.value })
+              }
+            />
+            {!showExplanation && (
+              <button
+                className="mt-3 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                onClick={() => {
+                  const userAnswer = userAnswers[currentIndex]?.trim().toLowerCase();
+                  const correctAnswer = currentQuestion.answer.trim().toLowerCase();
+                  if (userAnswer === correctAnswer) setScore((prev) => prev + 1);
+                  setShowExplanation(true);
+                }}
+              >
+                Submit Answer
+              </button>
             )}
           </div>
-        ))}
+        );
 
-        {error && <div className="text-red-600 text-sm">{error}</div>}
+      case "fillblank":
+        return (
+          <div>
+            <textarea
+              placeholder="Type your answer here..."
+              className="w-full border-2 border-gray-300 p-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              rows="3"
+              disabled={showExplanation}
+              value={userAnswers[currentIndex] || ""}
+              onChange={(e) =>
+                setUserAnswers({ ...userAnswers, [currentIndex]: e.target.value })
+              }
+            />
+            {!showExplanation && (
+              <button
+                onClick={() => {
+                  const userAnswer = userAnswers[currentIndex]?.trim().toLowerCase();
+                  const correctAnswer = currentQuestion.answer.trim().toLowerCase();
+                  if (userAnswer === correctAnswer) setScore((prev) => prev + 1);
+                  setShowExplanation(true);
+                }}
+                className="mt-3 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+              >
+                Submit Answer
+              </button>
+            )}
+          </div>
+        );
 
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 bg-indigo-600 text-white rounded"
-          >
-            {submitting ? "Submitting..." : "Submit Answers"}
-          </button>
+      default:
+        return <p className="text-gray-600">Unsupported question type.</p>;
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-lg">
+      <div className="mb-4 flex justify-between items-center">
+        <span className="text-sm font-semibold text-gray-500">
+          Question {currentIndex + 1} of {questions.length}
+        </span>
+        <span className="text-sm font-semibold text-indigo-600">
+          Score: {score}/{questions.length}
+        </span>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">
+          {currentQuestion.question || "No question text available"}
+        </h3>
+        {renderQuestion()}
+      </div>
+
+      {showExplanation && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="font-semibold text-blue-900 mb-2">
+            Correct Answer: {currentQuestion.answer_text || currentQuestion.answer}
+          </p>
+          {currentQuestion.explanation && (
+            <p className="text-sm text-gray-700">{currentQuestion.explanation}</p>
+          )}
         </div>
+      )}
 
-      </form>
+      {showExplanation && (
+        <button
+          onClick={handleNext}
+          className="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold"
+        >
+          {isLastQuestion ? "Finish Quiz" : "Next Question"}
+        </button>
+      )}
     </div>
   );
 }
