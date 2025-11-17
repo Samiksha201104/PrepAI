@@ -14,4 +14,4 @@ export default function Result({ result, onRestart }) {
       </div>
     </div>
   );
-}
+} 

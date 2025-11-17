@@ -1,6 +1,4 @@
-{
-  "source": "your_doc.pdf",
-  "questions": [
+ [
     {
       "type": "mcq",
       "question": "What is the primary goal of a literature review in research?",
@@ -26,17 +24,17 @@
     },
     {
       "type": "fillblank",
-      "question": "The primary goal of literature review is to know the use of content/ideas/approaches in the literature to correctly identify the problem that is vaguely known beforehand, to advocate a specific approach adapted to understanding the problem, and to access the choice of _____ used.\n\nAnswer: methods\nExplanation: The text explicitly states that a primary goal of literature review is to \"access the choice of methods used.\"",
+      "question": "The primary goal of literature review is to know the use of content/ideas/approaches in the literature to correctly identify the problem that is vaguely known beforehand, to advocate a specific approach adapted to understanding the problem, and to access the choice of _____ used.",
       "answer": "methods",
-      "explanation": "The primary goal of literature review is to know the use of content/ideas/approaches in the literature to correctly identify the problem that is vaguely known beforehand, to advocate a specific approach adapted to understanding the problem, and to access the choice of _____ used.\n\nAnswer: methods\nExplanation: The text explicitly states that a primary goal of literature review is to \"access the choice of methods used.\"",
+      "explanation": "The text explicitly states that a primary goal of literature review is to \"access the choice of methods used.\"",
       "source_chunk_index": 0,
       "source_excerpt": "RM& IPR– BRMK557 MODULE 2: LITERATURE REVIEW AND TECHNICAL READING, ATTRIBUTIONS AND CITATIONS Syllabus Literature Review and Technical Reading, New and Existing Knowledge, Analysis and Synthesis of Prior Art, Bibliographic Databases: Web of Science, Google and Google Scholar, Effective Search: The Way Forward, Introduction to Technical Reading, Conceptualizing Research, Critical and Creative Reading, Taking Notes While Reading, Reading Mathematics and Algorithms, Reading a Datasheet. Attributions and Citations: Giving Credit Wherever Due, Citations: Functions and Attributes, Impact of Title and Keywords on Citations, Knowledge Flow through Citation, Citing Datasets, Styles for Citations, Acknowledgments and Attributions, What Should Be Acknowledged, Acknowledgments in, Books Dissertations"
     },
     {
       "type": "tf",
-      "question": "**Statement:** Textbooks are primarily used to record the most recent advancements in a field, while research papers contain older, established knowledge.\n\n**Answer:** False\n\n**Explanation:** Textbooks generally contain older, established knowledge, while research papers typically present newer work.",
-      "answer": null,
-      "explanation": "**Statement:** Textbooks are primarily used to record the most recent advancements in a field, while research papers contain older, established knowledge.\n\n**Answer:** False\n\n**Explanation:** Textbooks generally contain older, established knowledge, while research papers typically present newer work.",
+      "question": "Textbooks are primarily used to record the most recent advancements in a field, while research papers contain older, established knowledge.",
+      "answer": "False",
+      "explanation": "Textbooks generally contain older, established knowledge, while research papers typically present newer work.",
       "source_chunk_index": 0,
       "source_excerpt": "RM& IPR– BRMK557 MODULE 2: LITERATURE REVIEW AND TECHNICAL READING, ATTRIBUTIONS AND CITATIONS Syllabus Literature Review and Technical Reading, New and Existing Knowledge, Analysis and Synthesis of Prior Art, Bibliographic Databases: Web of Science, Google and Google Scholar, Effective Search: The Way Forward, Introduction to Technical Reading, Conceptualizing Research, Critical and Creative Reading, Taking Notes While Reading, Reading Mathematics and Algorithms, Reading a Datasheet. Attributions and Citations: Giving Credit Wherever Due, Citations: Functions and Attributes, Impact of Title and Keywords on Citations, Knowledge Flow through Citation, Citing Datasets, Styles for Citations, Acknowledgments and Attributions, What Should Be Acknowledged, Acknowledgments in, Books Dissertations"
     },
@@ -53,31 +51,31 @@
       "answer_text": "Textbooks provide the established knowledge and background necessary to understand newer research papers.",
       "explanation": "Textbooks provide the foundational knowledge and background essential for a researcher to comprehend and build upon the specialized, cutting-edge information presented in newer research papers.",
       "source_chunk_index": 1,
-      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one. An effective review of literature ensures a firm foundation for advancing knowledge, facilitates theoretical growth, eliminates as areas that might be of interest, and opens new avenues of possible work • Generally, a good literature survey is the first expectation of a supervisor from the research student, and when done well can create a good impression that the state of art in the chosen field is well understood D"
+      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one. An effective review of literature ensures a firm foundation for advancing knowledge, facilitates theoretical growth, eliminates as areas that might be of interest, and opens new avenues of possible work • Generally, a good literature survey is the first expectation of a supervisor from the research student, and when done well can create a good impression that the state of art in the chosen field is well understood"
     },
     {
       "type": "short",
       "question": "What is the primary function of textbooks in relation to research papers?",
       "answer": "Textbooks provide established knowledge and background for understanding newer research.",
-      "explanation": "Q: What is the primary function of textbooks in relation to research papers?\nAnswer: Textbooks provide established knowledge and background for understanding newer research.\nExplanation: Textbooks lay the foundation upon which research papers build.",
+      "explanation": "Textbooks lay the foundation upon which research papers build.",
       "source_chunk_index": 1,
-      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one. An effective review of literature ensures a firm foundation for advancing knowledge, facilitates theoretical growth, eliminates as areas that might be of interest, and opens new avenues of possible work • Generally, a good literature survey is the first expectation of a supervisor from the research student, and when done well can create a good impression that the state of art in the chosen field is well understood D"
+      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one..."
     },
     {
       "type": "fillblank",
-      "question": "The primary function of textbooks in research is to provide the established knowledge and the _____ to be able to read newer work found in research papers.\n\n**Answer:** background\n**Explanation:** Textbooks lay the foundational knowledge necessary to understand more advanced research.",
-      "answer": null,
-      "explanation": "The primary function of textbooks in research is to provide the established knowledge and the _____ to be able to read newer work found in research papers.\n\n**Answer:** background\n**Explanation:** Textbooks lay the foundational knowledge necessary to understand more advanced research.",
+      "question": "The primary function of textbooks in research is to provide the established knowledge and the _____ to be able to read newer work found in research papers.",
+      "answer": "background",
+      "explanation": "Textbooks lay the foundational knowledge necessary to understand more advanced research.",
       "source_chunk_index": 1,
-      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one. An effective review of literature ensures a firm foundation for advancing knowledge, facilitates theoretical growth, eliminates as areas that might be of interest, and opens new avenues of possible work • Generally, a good literature survey is the first expectation of a supervisor from the research student, and when done well can create a good impression that the state of art in the chosen field is well understood D"
+      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers..."
     },
     {
       "type": "tf",
-      "question": "Statement: A good literature review should draw hasty conclusions and avoid looking into individual references to synthesize information.\n\nAnswer: False\nExplanation: A good literature review should not draw hasty conclusions and must look into individual references to synthesize information effectively.",
+      "question": "A good literature review should draw hasty conclusions and avoid looking into individual references to synthesize information.",
       "answer": "False",
-      "explanation": "Statement: A good literature review should draw hasty conclusions and avoid looking into individual references to synthesize information.\n\nAnswer: False\nExplanation: A good literature review should not draw hasty conclusions and must look into individual references to synthesize information effectively.",
+      "explanation": "A good literature review should not draw hasty conclusions and must look into individual references to synthesize information effectively.",
       "source_chunk_index": 1,
-      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work usually recorded in the research papers • The research paper is written for other researchers out on the edge of knowledge and it assumes that the reader already knows a lot in that field • The review process must explain how a research item builds on another one. An effective review of literature ensures a firm foundation for advancing knowledge, facilitates theoretical growth, eliminates as areas that might be of interest, and opens new avenues of possible work • Generally, a good literature survey is the first expectation of a supervisor from the research student, and when done well can create a good impression that the state of art in the chosen field is well understood D"
+      "source_excerpt": "the textbooks on one‘s topic provide the established knowledge and the background to be able to read the newer work..."
     },
     {
       "type": "mcq",
@@ -89,19 +87,17 @@
         "D": "The key criteria for evaluating information include Authority (author's credentials, publisher), Accuracy (credibility based on existing knowledge and citations), and Scope (appropriateness for the research level)."
       },
       "answer_letter": "D",
-      "answer_text": "The key criteria for evaluating information include Authority (author's credentials, publisher), Accuracy (credibility based on existing knowledge and citations), and Scope (appropriateness for the research level).",
-      "explanation": "The answer is correct because the provided text explicitly states that \"Here are a few criteria that could help the researcher in the evaluation of the information under study: o Authority... o Accuracy... o Scope...\" and then proceeds to define each of these.",
+      "answer_text": "The key criteria for evaluating information include Authority, Accuracy, and Scope.",
+      "explanation": "The text explicitly lists Authority, Accuracy, and Scope as the main criteria for evaluating information.",
       "source_chunk_index": 2,
-      "source_excerpt": "• It is always good to be suspicious of the claims made in the sources that have been thoroughly reviewed, especially in the case of tall claims. • If one is amenable to easily accept whatever is available in the literature, one may find it difficult to go beyond it in one‘s own work and may also fail to carefully analyze with a suspicious bent of mind one‘s own results subsequently. • The goal of literature survey is to bring out something new to work on through the identification of unsolved issues, determine the problems in the existing models or experimental designs, and present a novel idea and recommendations. • No matter where one gets the available information, one needs to critically evaluate each resource that the researcher wishes to cite. This methodology analyzes available mat"
+      "source_excerpt": "Here are a few criteria that could help the researcher in the evaluation of the information under study: Authority... Accuracy... Scope..."
     },
     {
       "type": "short",
       "question": "What is the primary goal of a literature survey?",
       "answer": "To identify novel research avenues by pinpointing unsolved issues and existing model problems.",
-      "explanation": "Q: What is the primary goal of a literature survey?\nAnswer: To identify novel research avenues by pinpointing unsolved issues and existing model problems.\nExplanation: The survey aims to reveal new research opportunities and areas for improvement in current models.",
+      "explanation": "The survey aims to reveal new research opportunities and areas for improvement in current models.",
       "source_chunk_index": 2,
-      "source_excerpt": "• It is always good to be suspicious of the claims made in the sources that have been thoroughly reviewed, especially in the case of tall claims. • If one is amenable to easily accept whatever is available in the literature, one may find it difficult to go beyond it in one‘s own work and may also fail to carefully analyze with a suspicious bent of mind one‘s own results subsequently. • The goal of literature survey is to bring out something new to work on through the identification of unsolved issues, determine the problems in the existing models or experimental designs, and present a novel idea and recommendations. • No matter where one gets the available information, one needs to critically evaluate each resource that the researcher wishes to cite. This methodology analyzes available mat"
+      "source_excerpt": "The goal of literature survey is to bring out something new to work on through the identification of unsolved issues..."
     }
-  ],
-  "summary": "Here are 3-5 bullet points summarizing the provided context:\n\n*   A literature review identifies problems, justifies approaches, and ensures novel contributions by synthesizing existing knowledge.\n*   Existing knowledge provides context, significance, and originality for new research, necessitating careful reading and critical evaluation.\n*   Bibliographic databases like Web of Science and Google Scholar help researchers find relevant scholarly materials, but require effective search strategies.\n*   Technical reading involves understanding concepts, models, and algorithms, critically analyzing sources for authority, accuracy, and scope.\n*   Proper attribution and citation acknowledge sources, facilitate knowledge flow, and build a strong foundation for research."
-}
+  ]

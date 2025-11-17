@@ -1,30 +1,39 @@
 import React, { useState } from "react";
 import { submitAnswers } from "../services/api";
+
 function Quiz({ quiz, onSubmitResult, onBack }) {
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");   
+  const [error, setError] = useState("");
 
   function handleChange(questionId, value) {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    setSubmitting(true);
-    try {
-      const payload = Object.entries(answers).map(([questionId, answer]) => ({
-        questionId,
-        answer
-      }));
-      const res = await submitAnswers(quiz.quizId || quiz.quizId, payload);
-      onSubmitResult && onSubmitResult(res);
-    } catch (e) {
-      setError(e.message || "Submit failed");
-    } finally {
-      setSubmitting(false);
-    }
+
+    let score = 0;
+    const total = quiz.questions.length;
+
+    quiz.questions.forEach((q) => {
+      const userAns = (answers[q.id] || "").toString().trim().toLowerCase();
+      const correctAns = q.answer?.toString().trim().toLowerCase();
+
+      if (userAns === correctAns) {
+        score++;
+      }
+    });
+
+    const result = {
+      score,
+      total,
+      feedback: `You scored ${score} out of ${total}.`,
+    };
+
+    // MUST MATCH App.jsx
+    onSubmitResult(result);
   }
 
   return (
@@ -35,10 +44,12 @@ function Quiz({ quiz, onSubmitResult, onBack }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+
         {quiz.questions.map((q, idx) => (
           <div key={q.id} className="p-4 border rounded bg-slate-50">
             <div className="font-medium mb-2">Q{idx + 1}. {q.text}</div>
 
+            {/* MCQ */}
             {q.type === "mcq" && q.options && (
               <div className="space-y-2">
                 {q.options.map((opt, i) => (
@@ -57,6 +68,7 @@ function Quiz({ quiz, onSubmitResult, onBack }) {
               </div>
             )}
 
+            {/* OPEN ENDED */}
             {q.type === "open" && (
               <textarea
                 rows={4}
@@ -71,12 +83,18 @@ function Quiz({ quiz, onSubmitResult, onBack }) {
         {error && <div className="text-red-600 text-sm">{error}</div>}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={submitting} className="px-4 py-2 bg-indigo-600 text-white rounded">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2 bg-indigo-600 text-white rounded"
+          >
             {submitting ? "Submitting..." : "Submit Answers"}
           </button>
         </div>
+
       </form>
     </div>
   );
 }
+
 export default Quiz;

@@ -4,27 +4,39 @@ import Quiz from "./components/Quiz";
 import Result from "./components/Result";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-// import sampleQuiz from "./temp/quizData.json"
-//import sampleQuiz from "./assets/quiz.json"
+import sampleQuiz from "./assets/quiz4.json"
+// import sampleQuiz from "./assets/quiz.json"
+// import sampleQuiz from "./assets/quiz2.json"
 
 export default function App() {  
   const [quizData, setQuizData] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(null);
 
-  // useEffect(() => {
-  //   setQuizData({
-  //     // quizId: "demoQuiz",
-  //     // title: "Sample StudyBuddy Quiz",      
-  //     questions: sampleQuiz.map((q) => ({
-  //     id: q.id,
-  //     text: q.question,
-  //     type: "mcq",            //q.type
-  //     options: q.choices || [],
-      
-  //     }))
-  //   });
-  // }, []);
+ useEffect(() => {
+  setQuizData({
+    questions: sampleQuiz.map((q, index) => ({
+      id: `q${index + 1}`,
+      text: q.question,
+      type:
+        q.type === "mcq" ? "mcq" :
+        q.type === "short" ? "open" :
+        q.type === "fillblank" ? "open" :
+        q.type === "tf" ? "mcq" : "open",
+      options:
+        q.type === "mcq"
+          ? Object.values(q.choices)
+          : q.type === "tf"
+          ? ["True", "False"]
+          : [],      
+      answer: q.answer_text || q.answer || q.answer_letter, 
+      correctLetter: q.answer_letter || null,
+      correctText: q.answer_text || null
+    }))
+  });
+}, []);
+
+
 
   return (
     <div className="min-h-screen h-full flex flex-col items-center p-6 bg-[url('/src/assets/bg.jpg')] bg-cover  ">
