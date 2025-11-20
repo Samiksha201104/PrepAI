@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 """
-Optimized RAG Quiz Generator (Gemini-backed)
-- Retains all features: PDF/DOCX/TXT/URL ingestion, cleaning, chunking,
-  embeddings (SBERT), FAISS, cross-encoder reranker, KeyBERT+spaCy candidates,
-  distractor selection, and Gemini generation.
-- Improvements: retries, backoff, deterministic behavior, robust parsing,
-  cross-encoder ranking for distractors, better prompts, light caching.
-
-Usage:
-    export GEMINI_API_KEY="..."
-    python rag_quiz_generator_gemini_opt.py --input sample.pdf --out quiz.json --max_questions 20
+Optimized RAG Quiz Generator (Gemini-backed) - FIXED QUESTION COUNT
 """
 
 import os
@@ -30,35 +21,29 @@ from bs4 import BeautifulSoup
 import nltk
 import spacy
 
-# embeddings & cross-encoder
 from sentence_transformers import SentenceTransformer, util, CrossEncoder
 import faiss
-
-# Gemini
 import google.generativeai as genai
 
-# Optional KeyBERT
 try:
     from keybert import KeyBERT
     KEYBERT_AVAILABLE = True
 except Exception:
     KEYBERT_AVAILABLE = False
 
-# ---------- Config / Tunables ----------
+# ---------- Config ----------
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-mpnet-base-v2")
 CROSS_ENCODER_MODEL = os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
-# prefer free-ish gemini model; allow override via env
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CHUNK_WORDS = int(os.getenv("CHUNK_WORDS", "600"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "120"))
 MAX_GEN_RETRIES = 3
 BACKOFF_BASE = 1.5
-RANDOM_SEED = 42  # deterministic shuffle for reproducibility
+RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
-# ---------------------------------------
 
-# setup minimal NLP downloads
+# Setup NLP
 try:
     nltk.data.find("tokenizers/punkt")
 except LookupError:
@@ -74,13 +59,12 @@ def load_spacy():
         return spacy.load("en_core_web_sm")
 nlp = load_spacy()
 
-# Configure Gemini
 if not GEMINI_API_KEY:
-    print("Warning: GEMINI_API_KEY not set. Set GEMINI_API_KEY env var before running for Gemini generation.")
+    print("Warning: GEMINI_API_KEY not set.")
 else:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# ---------- Utilities: resilient HTTP / retries ----------
+# ---------- Utilities ----------
 def retry_with_backoff(fn, retries=MAX_GEN_RETRIES, base=BACKOFF_BASE):
     for attempt in range(1, retries + 1):
         try:
@@ -92,14 +76,42 @@ def retry_with_backoff(fn, retries=MAX_GEN_RETRIES, base=BACKOFF_BASE):
             print(f"[retry] attempt {attempt} failed: {e}. sleeping {sleep_t:.1f}s")
             time.sleep(sleep_t)
 
-# ---------- Extraction & cleaning ----------
+# ---------- JSON Cleaning Function ----------
+def clean_gemini_json(raw_text: str) -> Optional[dict]:
+    """
+    Parse Gemini output that may contain:
+    - Markdown code fences (```json ... ```)
+    - Plain JSON
+    - Mixed text with JSON
+    """
+    if not raw_text:
+        return None
+    
+    # Remove markdown code fences
+    cleaned = re.sub(r'```json\s*', '', raw_text)
+    cleaned = re.sub(r'```\s*', '', cleaned)
+    cleaned = cleaned.strip()
+    
+    # Try to extract JSON if there's extra text
+    json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+    if json_match:
+        cleaned = json_match.group(0)
+    
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        print(f"[warn] JSON parse error: {e}")
+        print(f"[warn] Raw text: {raw_text[:200]}...")
+        return None
+
+# ---------- Extraction ----------
 def extract_text_from_pdf(path: str) -> str:
     parts = []
     with pdfplumber.open(path) as pdf:
         for p in pdf.pages:
             txt = p.extract_text()
             if txt:
-                parts.append(txt)
+                 parts.append(txt)
     return "\n\n".join(parts)
 
 def extract_text_from_docx(path: str) -> str:
@@ -134,18 +146,16 @@ def extract_text(path_or_url: str) -> str:
     elif ext == ".txt":
         return extract_text_from_txt(path_or_url)
     else:
-        raise ValueError("Unsupported input format. Use pdf/docx/txt or http(s) url.")
+        raise ValueError("Unsupported input format.")
 
 def clean_text(text: str) -> str:
     if not text:
         return ""
-    # preserve paragraphs but normalize whitespace
     text = re.sub(r"\r\n|\r", "\n", text)
     text = re.sub(r"(?im)^(page|pg)\s*\d+\b.*$", "", text)
     text = re.sub(r"(?im)^(confidential|copyright).*$", "", text)
     text = re.sub(r"http\S+|www\.\S+", "", text)
     text = re.sub(r"\[[0-9]+\]", "", text)
-    # collapse multiple spaces & trim
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -162,7 +172,7 @@ def chunk_text(text: str, chunk_words: int = CHUNK_WORDS, overlap: int = CHUNK_O
         i += chunk_words - overlap
     return chunks
 
-# ---------- FAISS + SBERT ----------
+# ---------- FAISS ----------
 class FaissStore:
     def __init__(self, embed_model_name: str = EMBED_MODEL):
         print(f"[info] Loading embedding model: {embed_model_name}", flush=True)
@@ -200,7 +210,7 @@ class FaissStore:
     def get_text(self, idx: int) -> str:
         return self.chunks[idx]
 
-# ---------- CrossEncoder Reranker ----------
+# ---------- Reranker ----------
 class Reranker:
     def __init__(self, model_name: str = CROSS_ENCODER_MODEL, top_n: int = 3):
         print(f"[info] Loading cross-encoder: {model_name}", flush=True)
@@ -215,7 +225,7 @@ class Reranker:
         scored = sorted(zip(candidate_texts, scores), key=lambda x: x[1], reverse=True)
         return [t for t, _ in scored[: self.top_n]]
 
-# ---------- Candidate extraction (KeyBERT + spaCy) ----------
+# ---------- Candidate extraction ----------
 def extract_candidates(text: str, top_n: int = 20) -> List[str]:
     candidates = []
     if KEYBERT_AVAILABLE:
@@ -234,7 +244,6 @@ def extract_candidates(text: str, top_n: int = 20) -> List[str]:
         s = ent.text.strip()
         if 1 < len(s.split()) <= 6:
             candidates.append(s)
-    # dedupe preserving order
     seen = set()
     uniq = []
     for c in candidates:
@@ -244,133 +253,61 @@ def extract_candidates(text: str, top_n: int = 20) -> List[str]:
             uniq.append(c)
     return uniq[:top_n]
 
-# ---------- Distractor selection: cross-encoder + SBERT fallback ----------
-def rank_distractors(answer: str, candidates: List[str], embed_model: SentenceTransformer, cross_encoder: Optional[CrossEncoder]=None, top_k: int = 3) -> List[str]:
-    if not candidates or not answer:
-        return []
-    # remove identical
-    filtered = [c for c in candidates if c.lower() != answer.lower()]
-    if not filtered:
-        return []
-    # Prefer cross-encoder scoring if available (better semantic ranking)
-    if cross_encoder is not None:
-        pairs = [[answer, c] for c in filtered]
-        try:
-            scores = cross_encoder.predict(pairs)
-            scored = sorted(zip(filtered, scores), key=lambda x: x[1], reverse=True)
-            # pick top candidates but avoid near-identical by SBERT cosine
-            sbert_embs = embed_model.encode([answer] + [c for c, _ in scored], convert_to_tensor=True)
-            ans_emb = sbert_embs[0]
-            cand_embs = sbert_embs[1:]
-            sims = util.cos_sim(ans_emb, cand_embs)[0]
-            chosen = []
-            for i, (c, sc) in enumerate(scored):
-                if len(chosen) >= top_k:
-                    break
-                if sims[i] > 0.995:
-                    continue
-                chosen.append(c)
-            return chosen
-        except Exception:
-            pass
-    # fallback SBERT similarity: choose close-but-not-identical
-    texts = [answer] + filtered
-    embs = embed_model.encode(texts, convert_to_tensor=True)
-    ans_emb = embs[0]
-    cand_embs = embs[1:]
-    sims = util.cos_sim(ans_emb, cand_embs)[0]
-    pairs = [(filtered[i], float(sims[i])) for i in range(len(filtered))]
-    pairs_sorted = sorted(pairs, key=lambda x: x[1], reverse=True)
-    distractors = []
-    for cand, sim in pairs_sorted:
-        if len(distractors) >= top_k:
-            break
-        if sim > 0.995:  # skip near-identical
-            continue
-        distractors.append(cand)
-    return distractors
-
-# ---------- Robust parsing helpers ----------
-MCQ_CHOICE_RE = re.compile(r"^([A-D])[\)\.\-]\s*(.+)$", re.IGNORECASE)
-ANSWER_RE = re.compile(r"^(?:answer|correct)\s*[:\-]\s*([A-D]|[A-D]\))", re.IGNORECASE)
-EXPLANATION_RE = re.compile(r"^explanation\s*[:\-]\s*(.+)$", re.IGNORECASE)
-
-def parse_mcq_text(raw: str) -> Optional[dict]:
-    lines = [l.strip() for l in raw.splitlines() if l.strip()]
-    q = None
-    choices = {}
-    answer_letter = None
-    explanation = None
-    for l in lines:
-        if l.lower().startswith("q:") or l.lower().startswith("question:"):
-            q = l.split(":", 1)[1].strip()
-            continue
-        m_choice = MCQ_CHOICE_RE.match(l)
-        if m_choice:
-            choices[m_choice.group(1).upper()] = m_choice.group(2).strip()
-            continue
-        m_ans = ANSWER_RE.match(l)
-        if m_ans:
-            answer_letter = m_ans.group(1).upper().strip().replace(")", "")
-            continue
-        m_expl = EXPLANATION_RE.match(l)
-        if m_expl:
-            explanation = m_expl.group(1).strip()
-    # fallback: sometimes answer line is like "Answer: B) text"
-    if not answer_letter:
-        for l in lines:
-            if l.lower().startswith("answer:"):
-                rest = l.split(":", 1)[1].strip()
-                if rest:
-                    candidate = rest.split()[0].strip().upper().replace(")", "").replace(".", "")
-                    if candidate in choices:
-                        answer_letter = candidate
-                        break
-    if q and choices and answer_letter:
-        return {
-            "type": "mcq",
-            "question": q,
-            "choices": choices,
-            "answer_letter": answer_letter,
-            "answer_text": choices.get(answer_letter),
-            "explanation": explanation
-        }
-    return None
-
-# ---------- Gemini generation wrapper (safe) ----------
+# ---------- Gemini call ----------
 def call_gemini(prompt: str, model_name: str = GEMINI_MODEL, temperature: float = 0.0) -> str:
     if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY not set in env")
-    # ensure model name doesn't have 'models/' prefix
+        raise RuntimeError("GEMINI_API_KEY not set")
     model_name = model_name.replace("models/", "").strip()
     def _call():
         mdl = genai.GenerativeModel(model_name)
-        # generate_content should accept a prompt string; keep generation concise
         resp = mdl.generate_content(prompt)
         return resp.text if getattr(resp, "text", None) else ""
     return retry_with_backoff(_call)
 
-# ---------- Question generation ----------
-
-# improved, consistent prompts with clear format expectations
+# ---------- Prompts ----------
 PROMPT_SUMMARY = (
-    "You are a concise summarizer. Produce 3-5 short bullet points (each 10-25 words) summarizing the facts in the CONTEXT.\n\n"
-    "CONTEXT:\n{context}\n\nBULLETS:\n"
-)
-PROMPT_MCQ = (
-    "You are a careful quiz-maker. Using the CONTEXT produce ONE multiple-choice question with four options labeled A) B) C) D).\n"
-    "Mark the correct option with 'Answer: <letter>' and include 'Explanation: <one-line explanation>'.\n\nCONTEXT:\n{context}\n\nOUTPUT:\n"
-)
-PROMPT_SHORT = (
-    "Using the CONTEXT produce one short-answer question and a one-line ideal answer. Format:\nQ: <question>\nAnswer: <short answer>\nExplanation: <one-line>\n\nCONTEXT:\n{context}\n"
-)
-PROMPT_FILL = (
-    "Using the CONTEXT produce one fill-in-the-blank (single blank '_____'), give the answer and one-line explanation.\n\nCONTEXT:\n{context}\n"
-)
-PROMPT_TF = (
-    "Using the CONTEXT produce one True/False question. Provide statement, 'Answer: True' or 'Answer: False', and one-line explanation.\n\nCONTEXT:\n{context}\n"
+    "Produce 3-5 short bullet points (10-25 words each) summarizing:\n\n{context}\n\nOUTPUT:"
 )
 
+PROMPT_MCQ = (
+    "Create ONE multiple-choice question with 4 options (A, B, C, D).\n"
+    "Return ONLY valid JSON with these exact keys:\n"
+    '- "question": the question text\n'
+    '- "choices": object with keys A, B, C, D\n'
+    '- "answer_letter": correct letter (A/B/C/D)\n'
+    '- "answer_text": text of correct answer\n'
+    '- "explanation": one sentence why it\'s correct\n\n'
+    "CONTEXT:\n{context}\n\nJSON:"
+)
+
+PROMPT_SHORT = (
+    "Create ONE short-answer question.\n"
+    "Return ONLY valid JSON with these exact keys:\n"
+    '- "question": the question text\n'
+    '- "answer": the correct answer\n'
+    '- "explanation": one sentence explanation\n\n'
+    "CONTEXT:\n{context}\n\nJSON:"
+)
+
+PROMPT_FILL = (
+    "Create ONE fill-in-the-blank question with '_____'.\n"
+    "Return ONLY valid JSON with these exact keys:\n"
+    '- "question": the question with blank\n'
+    '- "answer": word/phrase for blank\n'
+    '- "explanation": one sentence explanation\n\n'
+    "CONTEXT:\n{context}\n\nJSON:"
+)
+
+PROMPT_TF = (
+    "Create ONE True/False question.\n"
+    "Return ONLY valid JSON with these exact keys:\n"
+    '- "question": the statement\n'
+    '- "answer": "True" or "False"\n'
+    '- "explanation": one sentence explanation\n\n'
+    "CONTEXT:\n{context}\n\nJSON:"
+)
+
+# ---------- Question generation ----------
 def generate_one_question(context: str, qtype: str, emb_model: SentenceTransformer, reranker_ce: Optional[CrossEncoder]=None) -> dict:
     ctx = context.strip()
     if not ctx:
@@ -380,93 +317,76 @@ def generate_one_question(context: str, qtype: str, emb_model: SentenceTransform
         raw = call_gemini(PROMPT_SUMMARY.format(context=ctx))
         return {"type": "summary", "text": raw}
 
+    # For all question types, use JSON prompts
     if qtype == "mcq":
         raw = call_gemini(PROMPT_MCQ.format(context=ctx))
-        parsed = parse_mcq_text(raw)
-        if parsed:
-            return parsed
-        # fallback: ask gemini to output "Q: ... Answer: <answer>"
-        qa_raw = call_gemini(f"From the CONTEXT below produce a single question and answer in format 'Q: ...\\nAnswer: ...'\\n\nCONTEXT:\\n{ctx}")
-        q, a = None, None
-        for line in qa_raw.splitlines():
-            if line.lower().startswith("q:"):
-                q = line.split(":",1)[1].strip()
-            if line.lower().startswith("answer:"):
-                a = line.split(":",1)[1].strip()
-        if not q or not a:
-            return {"type": "mcq", "raw": raw}
-        # get candidate pool + pick distractors using cross-encoder prioritization
-        cands = extract_candidates(ctx, top_n=30)
-        distractors = rank_distractors(a, cands, emb_model, cross_encoder=reranker_ce, top_k=3)
-        if len(distractors) < 3:
-            # ask gemini for distractors
-            extra = call_gemini(f"Provide 3 plausible distractors for the correct answer: '{a}' — comma separated.")
-            extras = [p.strip() for p in re.split(r",|;|\\n", extra) if p.strip() and p.strip().lower() != a.lower()]
-            for e in extras:
-                if e not in distractors:
-                    distractors.append(e)
-                if len(distractors) >= 3:
-                    break
-        distractors = distractors[:3]
-        all_choices = [a] + distractors
-        random.Random(RANDOM_SEED).shuffle(all_choices)  # deterministic shuffle
-        letters = ["A", "B", "C", "D"]
-        choices = {letters[i]: all_choices[i] for i in range(len(all_choices))}
-        ans_letter = letters[all_choices.index(a)]
-        explanation = call_gemini(f"Explain in one sentence why the answer '{a}' is correct based on:\n{ctx}")
-        return {"type": "mcq", "question": q, "choices": choices, "answer_letter": ans_letter, "answer_text": a, "explanation": explanation}
+        parsed = clean_gemini_json(raw)
+        if parsed and all(k in parsed for k in ["question", "choices", "answer_letter"]):
+            return {
+                "type": "mcq",
+                "question": parsed.get("question", ""),
+                "choices": parsed.get("choices", {}),
+                "answer_letter": parsed.get("answer_letter", ""),
+                "answer_text": parsed.get("answer_text", ""),
+                "explanation": parsed.get("explanation", "")
+            }
+        # Fallback if parsing fails
+        return {"type": "mcq", "question": "Parse error", "choices": {}, "answer_letter": "A", "answer_text": "", "explanation": raw[:200]}
 
-    if qtype == "short":
+    elif qtype == "short":
         raw = call_gemini(PROMPT_SHORT.format(context=ctx))
-        q, a = None, None
-        for line in raw.splitlines():
-            if line.lower().startswith("q:"):
-                q = line.split(":",1)[1].strip()
-            elif line.lower().startswith("answer:"):
-                a = line.split(":",1)[1].strip()
-        # fallback: whole raw as explanation if no parse
-        return {"type": "short", "question": q or raw.splitlines()[0] if raw else None, "answer": a, "explanation": raw}
+        parsed = clean_gemini_json(raw)
+        if parsed and "question" in parsed:
+            return {
+                "type": "short",
+                "question": parsed.get("question", ""),
+                "answer": parsed.get("answer", ""),
+                "explanation": parsed.get("explanation", "")
+            }
+        return {"type": "short", "question": "Parse error", "answer": "", "explanation": raw[:200]}
 
-    if qtype == "fillblank":
+    elif qtype == "fillblank":
         raw = call_gemini(PROMPT_FILL.format(context=ctx))
-        q, a = None, None
-        for line in raw.splitlines():
-            if line.lower().startswith("q:"):
-                q = line.split(":",1)[1].strip()
-            elif line.lower().startswith("answer:"):
-                a = line.split(":",1)[1].strip()
-        return {"type": "fillblank", "question": q or raw, "answer": a, "explanation": raw}
+        parsed = clean_gemini_json(raw)
+        if parsed and "question" in parsed:
+            return {
+                "type": "fillblank",
+                "question": parsed.get("question", ""),
+                "answer": parsed.get("answer", ""),
+                "explanation": parsed.get("explanation", "")
+            }
+        return {"type": "fillblank", "question": "Parse error", "answer": "", "explanation": raw[:200]}
 
-    if qtype == "tf":
+    elif qtype == "tf":
         raw = call_gemini(PROMPT_TF.format(context=ctx))
-        q, a = None, None
-        for line in raw.splitlines():
-            if line.lower().startswith("q:"):
-                q = line.split(":",1)[1].strip()
-            elif line.lower().startswith("answer:"):
-                a = line.split(":",1)[1].strip()
-        return {"type": "tf", "question": q or raw, "answer": a, "explanation": raw}
+        parsed = clean_gemini_json(raw)
+        if parsed and "question" in parsed:
+            return {
+                "type": "tf",
+                "question": parsed.get("question", ""),
+                "answer": parsed.get("answer", ""),
+                "explanation": parsed.get("explanation", "")
+            }
+        return {"type": "tf", "question": "Parse error", "answer": "", "explanation": raw[:200]}
 
     raise ValueError("Unsupported qtype")
 
 # ---------- Orchestrator ----------
-def generate_quiz(input_path: str, out_json: str = "quiz.json", max_questions: int = 20,
+def generate_quiz(input_path: str, out_json: str = "quiz.json", max_questions: int = 50,
                   question_types: List[str] = ["mcq", "short", "fillblank", "tf"], summarize_first: bool = True):
     print("[start] Extracting text...", flush=True)
     raw = extract_text(input_path)
     text = clean_text(raw)
     if not text:
-        raise ValueError("No text extracted from input.")
+        raise ValueError("No text extracted.")
     print(f"[info] Document length: {len(text.split())} words", flush=True)
 
     chunks = chunk_text(text)
     print(f"[info] Chunk count: {len(chunks)}", flush=True)
 
-    # build vector store (SBERT embeddings)
     vs = FaissStore(EMBED_MODEL)
     vs.build(chunks)
 
-    # load reranker & reuse for distractor ranking
     reranker = Reranker(CROSS_ENCODER_MODEL, top_n=3)
     embed_model = vs.model
 
@@ -475,28 +395,35 @@ def generate_quiz(input_path: str, out_json: str = "quiz.json", max_questions: i
         seed_ctx = " ".join(chunks[:min(4, len(chunks))])
         quiz["summary"] = call_gemini(PROMPT_SUMMARY.format(context=seed_ctx))
 
+    # FIXED: Generate questions in a round-robin fashion until we reach max_questions
     qcount = 0
-    for i, chunk in enumerate(chunks):
-        if qcount >= max_questions:
-            break
-        # retrieve top neighbors and rerank
-        hits = vs.search(chunk, top_k=8)
-        cand_texts = [vs.get_text(idx) for idx, _ in hits]
-        top_ctxs = reranker.rerank(chunk, cand_texts) if cand_texts else [chunk]
-        combined_ctx = "\n\n".join(top_ctxs)
-        for qtype in question_types:
-            if qcount >= max_questions:
-                break
-            try:
-                item = generate_one_question(combined_ctx, qtype, embed_model, reranker.model)
-                item["source_chunk_index"] = i
-                item["source_excerpt"] = combined_ctx[:800]
-                quiz["questions"].append(item)
-                qcount += 1
-                print(f"[ok] Generated {qtype} #{qcount}", flush=True)
-            except Exception as e:
-                print(f"[warn] generation failed for chunk {i}, qtype {qtype}: {e}", flush=True)
-                continue
+    chunk_idx = 0
+    type_idx = 0
+    
+    while qcount < max_questions and chunk_idx < len(chunks):
+        chunk = chunks[chunk_idx]
+        qtype = question_types[type_idx % len(question_types)]
+        
+        try:
+            hits = vs.search(chunk, top_k=8)
+            cand_texts = [vs.get_text(idx) for idx, _ in hits]
+            top_ctxs = reranker.rerank(chunk, cand_texts) if cand_texts else [chunk]
+            combined_ctx = "\n\n".join(top_ctxs)
+            
+            item = generate_one_question(combined_ctx, qtype, embed_model, reranker.model)
+            item["source_chunk_index"] = chunk_idx
+            quiz["questions"].append(item)
+            qcount += 1
+            print(f"[ok] Generated {qtype} #{qcount}/{max_questions}", flush=True)
+        except Exception as e:
+            print(f"[warn] generation failed for chunk {chunk_idx}, qtype {qtype}: {e}", flush=True)
+        
+        # Move to next question type
+        type_idx += 1
+        
+        # If we've gone through all question types, move to next chunk
+        if type_idx % len(question_types) == 0:
+            chunk_idx += 1
 
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(quiz, f, ensure_ascii=False, indent=2)

@@ -1,14 +1,16 @@
 import React, { useState } from "react";
+import { useScore } from "./ScoreContext";
 
 function Quiz({ questions, onComplete }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [showExplanation, setShowExplanation] = useState(false);
-  const [score, setScore] = useState(0);
+  const { score, setScore } = useScore();
+  const { clickSound } = useScore();
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="backdrop-blur-lg bg-white/20 p-6 rounded-lg shadow-md text-center">
+      <div className=" bg-[#E5DECE] p-6 rounded-lg shadow-md text-center">
         <p className="text-gray-600">No questions available.</p>
       </div>
     );
@@ -18,6 +20,7 @@ function Quiz({ questions, onComplete }) {
   const isLastQuestion = currentIndex === questions.length - 1;
 
   const handleAnswer = (answer) => {
+    clickSound.play();
     setUserAnswers({ ...userAnswers, [currentIndex]: answer });
     setShowExplanation(true);
 
@@ -28,12 +31,19 @@ function Quiz({ questions, onComplete }) {
   };
 
   const handleNext = () => {
+    clickSound.play();
     setShowExplanation(false);
     if (isLastQuestion) {
       onComplete();
     } else {
       setCurrentIndex(currentIndex + 1);
     }
+  };
+
+  // Helper function to compare answers (case-insensitive, trim whitespace)
+  const compareAnswers = (userAns, correctAns) => {
+    if (!userAns || !correctAns) return false;
+    return userAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
   };
 
   const renderQuestion = () => {
@@ -46,15 +56,15 @@ function Quiz({ questions, onComplete }) {
                 key={letter}
                 onClick={() => handleAnswer(letter)}
                 disabled={showExplanation}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                className={`w-full text-left  rounded-full p-4 border-3  transition-all ${
                   showExplanation
                     ? letter === currentQuestion.answer_letter
                       ? "border-green-500 bg-green-50"
                       : userAnswers[currentIndex] === letter
                       ? "border-red-500 bg-red-50"
                       : "border-gray-200 bg-gray-50"
-                    : "border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
-                } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
+                    : "border-[#99968D] bg-[#FFFFFF] border-3 hover:border-[#040404] "
+                } ${showExplanation ? "cursor-not-allowed " : "cursor-pointer"}`}
               >
                 <span className="font-semibold">{letter})</span> {text}
               </button>
@@ -69,10 +79,11 @@ function Quiz({ questions, onComplete }) {
               <button
                 key={option}
                 onClick={() => {
+                  clickSound.play();
                   if (!showExplanation) {
                     setUserAnswers({ ...userAnswers, [currentIndex]: option });
 
-                    if (option === currentQuestion.answer) {
+                    if (compareAnswers(option, currentQuestion.answer)) {
                       setScore((prev) => prev + 1);
                     }
 
@@ -80,14 +91,14 @@ function Quiz({ questions, onComplete }) {
                   }
                 }}
                 disabled={showExplanation}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                className={`w-full text-left p-4 rounded-full border-3  transition-all ${
                   showExplanation
-                    ? option === currentQuestion.answer
+                    ? compareAnswers(option, currentQuestion.answer)
                       ? "border-green-500 bg-green-50"
                       : userAnswers[currentIndex] === option
                       ? "border-red-500 bg-red-50"
                       : "border-gray-200 bg-gray-50"
-                    : "border-gray-300 hover:border-indigo-500 hover:bg-indigo-50"
+                    : "border-[#99968D]  bg-[#FFFFFF] border-3 hover:border-[#040404]"
                 } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
                 {option}
@@ -99,11 +110,9 @@ function Quiz({ questions, onComplete }) {
       case "short":
         return (
           <div>
-            <p className="mb-2 font-medium">{currentQuestion.question}</p>
-            <input
-              type="text"
+            <textarea
               placeholder="Type your answer here..."
-              className="w-full border-2 border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border-3 border-[#99968D] bg-[#FFFFFF] p-2 rounded-full focus:ring-2  focus:border-transparent"
               value={userAnswers[currentIndex] || ""}
               disabled={showExplanation}
               onChange={(e) =>
@@ -112,16 +121,29 @@ function Quiz({ questions, onComplete }) {
             />
             {!showExplanation && (
               <button
-                className="mt-3 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
-                onClick={() => {
-                  const userAnswer = userAnswers[currentIndex]?.trim().toLowerCase();
-                  const correctAnswer = currentQuestion.answer.trim().toLowerCase();
-                  if (userAnswer === correctAnswer) setScore((prev) => prev + 1);
+                className="mt-3 bg-[#040404] text-white px-6 py-2 rounded-full hover:cursor-pointer"
+                onClick={() => {clickSound.play();
+                  if (compareAnswers(userAnswers[currentIndex], currentQuestion.answer)) {
+                    setScore((prev) => prev + 1);
+                  }
                   setShowExplanation(true);
+                  clickSound.play();
+
                 }}
               >
                 Submit Answer
               </button>
+            )}
+            {showExplanation && (
+              <div className={`mt-3 p-3 rounded-lg border-2 ${
+                compareAnswers(userAnswers[currentIndex], currentQuestion.answer)
+                  ? "border-green-500 bg-green-50"
+                  : "border-red-500 bg-red-50"
+              }`}>
+                <p className="text-sm font-medium">
+                  Your answer: {userAnswers[currentIndex] || "(empty)"}
+                </p>
+              </div>
             )}
           </div>
         );
@@ -129,9 +151,10 @@ function Quiz({ questions, onComplete }) {
       case "fillblank":
         return (
           <div>
-            <textarea
+            <input
+            type="text"
               placeholder="Type your answer here..."
-              className="w-full border-2 border-gray-300 p-4 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border-3 border-[#99968D] bg-[#FFFFFF] p-2 rounded-full focus:ring-2  focus:border-transparent"
               rows="3"
               disabled={showExplanation}
               value={userAnswers[currentIndex] || ""}
@@ -142,15 +165,27 @@ function Quiz({ questions, onComplete }) {
             {!showExplanation && (
               <button
                 onClick={() => {
-                  const userAnswer = userAnswers[currentIndex]?.trim().toLowerCase();
-                  const correctAnswer = currentQuestion.answer.trim().toLowerCase();
-                  if (userAnswer === correctAnswer) setScore((prev) => prev + 1);
+                  if (compareAnswers(userAnswers[currentIndex], currentQuestion.answer)) {
+                    setScore((prev) => prev + 1);
+                  };
+                  clickSound.play();
                   setShowExplanation(true);
                 }}
-                className="mt-3 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                className="mt-3 bg-[#040404] text-white px-6 py-2 rounded-full hover:cursor-pointer"
               >
                 Submit Answer
               </button>
+            )}
+            {showExplanation && (
+              <div className={`mt-3 p-3 rounded-lg border-2 ${
+                compareAnswers(userAnswers[currentIndex], currentQuestion.answer)
+                  ? "border-green-500 bg-green-50"
+                  : "border-red-500 bg-red-50"
+              }`}>
+                <p className="text-sm font-medium">
+                  Your answer: {userAnswers[currentIndex] || "(empty)"}
+                </p>
+              </div>
             )}
           </div>
         );
@@ -161,12 +196,12 @@ function Quiz({ questions, onComplete }) {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg">
+    <div className="bg-[#E5DECE] mb-5 p-6 border-3 border-[#99968D] rounded-4xl shadow-lg">
       <div className="mb-4 flex justify-between items-center">
         <span className="text-sm font-semibold text-gray-500">
           Question {currentIndex + 1} of {questions.length}
         </span>
-        <span className="text-sm font-semibold text-indigo-600">
+        <span className="text-sm font-semibold text-[#040404]">
           Score: {score}/{questions.length}
         </span>
       </div>
@@ -179,8 +214,8 @@ function Quiz({ questions, onComplete }) {
       </div>
 
       {showExplanation && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="font-semibold text-blue-900 mb-2">
+        <div className="mb-4 p-4 bg-[#FFFFFF] border-3 border-[#99968D] rounded-4xl">
+          <p className="font-semibold text-[#040404] mb-2">
             Correct Answer: {currentQuestion.answer_text || currentQuestion.answer}
           </p>
           {currentQuestion.explanation && (
@@ -192,7 +227,7 @@ function Quiz({ questions, onComplete }) {
       {showExplanation && (
         <button
           onClick={handleNext}
-          className="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold"
+          className="w-full bg-[#040404] text-[#FFFFFF] px-6 py-3 rounded-full hover:cursor-pointer font-semibold"
         >
           {isLastQuestion ? "Finish Quiz" : "Next Question"}
         </button>
