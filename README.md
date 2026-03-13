@@ -1,0 +1,1 @@
+PrepAI uses Generative AI to automatically create quizzes from notes uploaded by students and the system generates quizes in the form of multiple choice questions , fill in the blanks , and Short answers.
