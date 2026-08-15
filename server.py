@@ -20,7 +20,6 @@ CORS(
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
 def extract_text_from_url(url):
     """Extract clean text from a webpage URL with proper headers and content filtering."""
     try:
