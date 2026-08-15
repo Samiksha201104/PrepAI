@@ -1,0 +1,13 @@
+Flask
+flask-cors
+requests
+beautifulsoup4
+pdfplumber
+python-docx
+nltk
+spacy
+sentence-transformers
+faiss-cpu
+google-generativeai
+keybert
+gunicorn
