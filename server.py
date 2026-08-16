@@ -13,6 +13,13 @@ app = Flask(__name__)
 
 CORS(app)
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "ok",
+        "message": "PrepAI backend is running"
+    })
+
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
