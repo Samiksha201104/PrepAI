@@ -1001,8 +1001,8 @@ def generate_one_question(
     # --------------------------------------------------------
 
     raw = call_gemini(
-        prompt.format(
-            context=context
+        prompt.replace(
+            "{context}", context
         )
     )
 
@@ -1281,8 +1281,8 @@ def generate_quiz(
         try:
 
             quiz["summary"] = call_gemini(
-                PROMPT_SUMMARY.format(
-                    context=summary_context
+                PROMPT_SUMMARY.replace(
+                    "{context}", summary_context
                 )
             )
 
