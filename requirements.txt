@@ -9,5 +9,4 @@ spacy
 sentence-transformers
 faiss-cpu
 google-generativeai
-keybert
 gunicorn
