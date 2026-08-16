@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RAG Quiz Generator using Gemini + Sentence Transformers + FAISS
+RAG Quiz Generator using Gemini + TF-IDF retrieval
 
 Supports:
     - PDF
@@ -15,6 +15,18 @@ Question types:
     - tf
 
 Designed to be called by server.py.
+
+NOTE ON THIS VERSION:
+Retrieval previously used sentence-transformers + faiss (i.e. a full
+PyTorch install). On memory-constrained hosts (e.g. Render free/starter
+tier, ~512MB RAM), importing torch + sentence-transformers alone can
+exceed the memory limit and get the process OOM-killed mid-request,
+which is why quiz generation would silently hang at "running" forever.
+
+This version uses scikit-learn's TF-IDF + cosine similarity instead.
+It's a few MB instead of 1GB+, starts instantly (no model download),
+and is more than good enough for retrieving relevant chunks from a
+single document.
 """
 
 import os
@@ -32,19 +44,15 @@ import pdfplumber
 from docx import Document
 from bs4 import BeautifulSoup
 
-import faiss
-from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 import google.generativeai as genai
 
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
-
-EMBED_MODEL = os.getenv(
-    "EMBED_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
 
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
@@ -522,27 +530,25 @@ def chunk_text(
 
 
 # ============================================================
-# FAISS VECTOR STORE
+# TF-IDF VECTOR STORE (replaces FAISS + sentence-transformers)
 # ============================================================
 
-class FaissStore:
+class TfidfStore:
+    """
+    Lightweight retrieval store using TF-IDF + cosine similarity.
 
-    def __init__(
-        self,
-        embed_model_name: str = EMBED_MODEL
-    ):
+    Deliberately avoids sentence-transformers/faiss (which pull in a
+    full PyTorch install and can easily exceed memory limits on
+    small hosting instances). scikit-learn's TF-IDF is a few MB,
+    has no model download step, and is fast enough for retrieval
+    over a single document's worth of chunks.
+    """
 
-        print(
-            f"[info] Loading embedding model: "
-            f"{embed_model_name}",
-            flush=True
-        )
+    def __init__(self):
 
-        self.model = SentenceTransformer(
-            embed_model_name
-        )
+        self.vectorizer = None
 
-        self.index = None
+        self.matrix = None
 
         self.chunks: List[str] = []
 
@@ -554,43 +560,32 @@ class FaissStore:
 
         if not chunks:
 
-            self.index = None
+            self.vectorizer = None
+
+            self.matrix = None
 
             self.chunks = []
 
             return
 
         print(
-            f"[info] Encoding {len(chunks)} chunks...",
+            f"[info] Building TF-IDF index for "
+            f"{len(chunks)} chunks...",
             flush=True
         )
 
-        embeddings = self.model.encode(
-            chunks,
-            show_progress_bar=True,
-            convert_to_numpy=True
-        ).astype("float32")
-
-        # Normalize embeddings
-        faiss.normalize_L2(
-            embeddings
+        self.vectorizer = TfidfVectorizer(
+            stop_words="english"
         )
 
-        dimension = embeddings.shape[1]
-
-        self.index = faiss.IndexFlatIP(
-            dimension
-        )
-
-        self.index.add(
-            embeddings
+        self.matrix = self.vectorizer.fit_transform(
+            chunks
         )
 
         self.chunks = chunks
 
         print(
-            f"[info] FAISS index built "
-            f"(dimension={dimension})",
+            "[info] TF-IDF index built",
             flush=True
         )
 
@@ -601,11 +596,7 @@ class FaissStore:
         top_k: int = 3
     ) -> List[Tuple[int, float]]:
 
-        if self.index is None:
-
-            return []
-
-        if not self.chunks:
+        if self.vectorizer is None or not self.chunks:
 
             return []
 
@@ -615,36 +606,28 @@ class FaissStore:
             len(self.chunks)
         )
 
-        query_embedding = self.model.encode(
-            [query],
-            convert_to_numpy=True
-        ).astype("float32")
-
-        faiss.normalize_L2(
-            query_embedding
+        query_vec = self.vectorizer.transform(
+            [query]
         )
 
-        scores, indices = self.index.search(
-            query_embedding,
-            top_k
-        )
+        scores = cosine_similarity(
+            query_vec,
+            self.matrix
+        )[0]
+
+        ranked_indices = scores.argsort()[::-1][:top_k]
 
         results = []
 
-        for idx, score in zip(
-            indices[0],
-            scores[0]
-        ):
+        for idx in ranked_indices:
 
-            if idx == -1:
+            score = float(scores[idx])
 
+            if score <= 0:
                 continue
 
             results.append(
-                (
-                    int(idx),
-                    float(score)
-                )
+                (int(idx), score)
             )
 
         return results
@@ -1256,12 +1239,10 @@ def generate_quiz(
         )
 
     # --------------------------------------------------------
-    # Build FAISS
+    # Build TF-IDF retrieval index
     # --------------------------------------------------------
 
-    vector_store = FaissStore(
-        EMBED_MODEL
-    )
+    vector_store = TfidfStore()
 
     vector_store.build(
         chunks
@@ -1500,7 +1481,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "RAG Quiz Generator "
-            "(Gemini + FAISS)"
+            "(Gemini + TF-IDF)"
         )
     )
 
