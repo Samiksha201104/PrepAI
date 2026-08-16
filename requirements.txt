@@ -4,8 +4,6 @@ requests
 beautifulsoup4
 pdfplumber
 python-docx
-nltk
-sentence-transformers
-faiss-cpu
+scikit-learn
 google-generativeai
 gunicorn
