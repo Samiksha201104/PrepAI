@@ -20,6 +20,20 @@ CORS(app)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# --------------------------------------------------------------
+# Absolute path to this file's directory, and to gemini3.py.
+#
+# The previous version called subprocess.run(["gemini3.py", ...])
+# using a bare relative path. That only works if the process's
+# current working directory happens to be this file's directory.
+# Depending on how the platform (Render, gunicorn, etc.) starts
+# the app, that is not guaranteed. Using an absolute path removes
+# that ambiguity entirely.
+# --------------------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GEMINI_SCRIPT_PATH = os.path.join(BASE_DIR, "gemini3.py")
+
 
 # ============================================================
 # HOME / HEALTH ROUTES
@@ -170,8 +184,9 @@ def run_quiz_generation(
         print("Number of questions:", num_questions)
         print("Question types:", types_str)
         print("Quiz output:", quiz_json)
+        print("Gemini script:", GEMINI_SCRIPT_PATH)
         print("========================================")
-        print()
+        print(flush=True)
 
         # ----------------------------------------------------
         # Update progress
@@ -188,12 +203,15 @@ def run_quiz_generation(
 
         # ----------------------------------------------------
         # Run gemini3.py
+        #
+        # Use the absolute path (GEMINI_SCRIPT_PATH) so this
+        # works regardless of the process's working directory.
         # ----------------------------------------------------
 
         result = subprocess.run(
             [
                 sys.executable,
-                "gemini3.py",
+                GEMINI_SCRIPT_PATH,
 
                 "--input",
                 file_path,
@@ -236,7 +254,7 @@ def run_quiz_generation(
         print("========================================")
         print("GEMINI RETURN CODE")
         print("========================================")
-        print(result.returncode)
+        print(result.returncode, flush=True)
 
         print()
 
@@ -259,7 +277,8 @@ def run_quiz_generation(
                 )
 
             print(
-                f"✅ Quiz generation complete for {file_id}"
+                f"✅ Quiz generation complete for {file_id}",
+                flush=True
             )
 
         else:
@@ -276,7 +295,7 @@ def run_quiz_generation(
             print("========================================")
             print(error_message)
             print("========================================")
-            print()
+            print(flush=True)
 
             with open(progress_json, "w") as f:
                 json.dump(
@@ -294,7 +313,8 @@ def run_quiz_generation(
     except subprocess.TimeoutExpired:
 
         print(
-            "❌ Quiz generation timed out after 10 minutes"
+            "❌ Quiz generation timed out after 10 minutes",
+            flush=True
         )
 
         with open(progress_json, "w") as f:
@@ -311,13 +331,20 @@ def run_quiz_generation(
 
     # --------------------------------------------------------
     # Any other error
+    #
+    # This is the important safety net: if anything above
+    # raises (including things like the file not existing,
+    # a permissions issue, etc.) we still write an "error"
+    # status instead of leaving progress.json stuck on
+    # "running" forever.
     # --------------------------------------------------------
 
     except Exception as e:
 
         print(
             "❌ Unexpected error during quiz generation:",
-            str(e)
+            str(e),
+            flush=True
         )
 
         with open(progress_json, "w") as f:
@@ -471,7 +498,8 @@ def upload_file():
         uploaded_file.save(file_path)
 
         print(
-            f"📄 Saved uploaded file at: {file_path}"
+            f"📄 Saved uploaded file at: {file_path}",
+            flush=True
         )
 
     # --------------------------------------------------------
@@ -496,7 +524,8 @@ def upload_file():
             f.write(extracted_text)
 
         print(
-            f"🌐 URL extracted and saved at: {file_path}"
+            f"🌐 URL extracted and saved at: {file_path}",
+            flush=True
         )
 
     # --------------------------------------------------------
@@ -511,7 +540,7 @@ def upload_file():
     print("Questions:", num_questions)
     print("Question types:", question_types)
     print("========================================")
-    print()
+    print(flush=True)
 
     thread = threading.Thread(
         target=run_quiz_generation,
