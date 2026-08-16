@@ -11,13 +11,31 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-CORS(app)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"]
+)
+
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
         "status": "ok",
         "message": "PrepAI backend is running"
+    })
+
+
+@app.route("/upload", methods=["OPTIONS"])
+def upload_options():
+    return "", 204
+
+@app.route("/test", methods=["GET"])
+def test():
+    return jsonify({
+        "status": "ok",
+        "message": "Backend test successful"
     })
 
 UPLOAD_FOLDER = "uploads"
