@@ -9,7 +9,7 @@ import json
 import time
 import random
 import argparse
-from functools import lru_cache
+
 from pathlib import Path
 from typing import List, Tuple, Optional
 
@@ -19,21 +19,20 @@ from docx import Document
 from bs4 import BeautifulSoup
 
 import nltk
-import spacy
 
-from sentence_transformers import SentenceTransformer, util, CrossEncoder
+
+from sentence_transformers import SentenceTransformer
 import faiss
 import google.generativeai as genai
 
-try:
-    from keybert import KeyBERT
-    KEYBERT_AVAILABLE = True
-except Exception:
-    KEYBERT_AVAILABLE = False
+
 
 # ---------- Config ----------
-EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-mpnet-base-v2")
-CROSS_ENCODER_MODEL = os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+EMBED_MODEL = os.getenv(
+    "EMBED_MODEL",
+    "sentence-transformers/all-MiniLM-L6-v2"
+)
+
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CHUNK_WORDS = int(os.getenv("CHUNK_WORDS", "600"))
@@ -49,15 +48,15 @@ try:
 except LookupError:
     nltk.download("punkt")
 
-@lru_cache(maxsize=1)
-def load_spacy():
-    try:
-        return spacy.load("en_core_web_sm")
-    except Exception:
-        import spacy.cli
-        spacy.cli.download("en_core_web_sm")
-        return spacy.load("en_core_web_sm")
-nlp = load_spacy()
+# @lru_cache(maxsize=1)
+# def load_spacy():
+#     try:
+#         return spacy.load("en_core_web_sm")
+#     except Exception:
+#         import spacy.cli
+#         spacy.cli.download("en_core_web_sm")
+#         return spacy.load("en_core_web_sm")
+# nlp = load_spacy()
 
 if not GEMINI_API_KEY:
     print("Warning: GEMINI_API_KEY not set.")
@@ -210,48 +209,48 @@ class FaissStore:
     def get_text(self, idx: int) -> str:
         return self.chunks[idx]
 
-# ---------- Reranker ----------
-class Reranker:
-    def __init__(self, model_name: str = CROSS_ENCODER_MODEL, top_n: int = 3):
-        print(f"[info] Loading cross-encoder: {model_name}", flush=True)
-        self.model = CrossEncoder(model_name)
-        self.top_n = top_n
+# # ---------- Reranker ----------
+# class Reranker:
+#     def __init__(self, model_name: str = CROSS_ENCODER_MODEL, top_n: int = 3):
+#         print(f"[info] Loading cross-encoder: {model_name}", flush=True)
+#         self.model = CrossEncoder(model_name)
+#         self.top_n = top_n
 
-    def rerank(self, query: str, candidate_texts: List[str]) -> List[str]:
-        if not candidate_texts:
-            return []
-        pairs = [[query, t] for t in candidate_texts]
-        scores = self.model.predict(pairs)
-        scored = sorted(zip(candidate_texts, scores), key=lambda x: x[1], reverse=True)
-        return [t for t, _ in scored[: self.top_n]]
+#     def rerank(self, query: str, candidate_texts: List[str]) -> List[str]:
+#         if not candidate_texts:
+#             return []
+#         pairs = [[query, t] for t in candidate_texts]
+#         scores = self.model.predict(pairs)
+#         scored = sorted(zip(candidate_texts, scores), key=lambda x: x[1], reverse=True)
+#         return [t for t, _ in scored[: self.top_n]]
 
 # ---------- Candidate extraction ----------
-def extract_candidates(text: str, top_n: int = 20) -> List[str]:
-    candidates = []
-    if KEYBERT_AVAILABLE:
-        try:
-            kw = KeyBERT(model=EMBED_MODEL)
-            kws = kw.extract_keywords(text, keyphrase_ngram_range=(1, 3), stop_words="english", top_n=top_n)
-            candidates.extend([k[0] for k in kws])
-        except Exception:
-            pass
-    doc = nlp(text)
-    for nc in doc.noun_chunks:
-        s = nc.text.strip()
-        if 1 < len(s.split()) <= 6:
-            candidates.append(s)
-    for ent in doc.ents:
-        s = ent.text.strip()
-        if 1 < len(s.split()) <= 6:
-            candidates.append(s)
-    seen = set()
-    uniq = []
-    for c in candidates:
-        lc = c.lower()
-        if lc not in seen:
-            seen.add(lc)
-            uniq.append(c)
-    return uniq[:top_n]
+# def extract_candidates(text: str, top_n: int = 20) -> List[str]:
+#     candidates = []
+#     if KEYBERT_AVAILABLE:
+#         try:
+#             kw = KeyBERT(model=EMBED_MODEL)
+#             kws = kw.extract_keywords(text, keyphrase_ngram_range=(1, 3), stop_words="english", top_n=top_n)
+#             candidates.extend([k[0] for k in kws])
+#         except Exception:
+#             pass
+#     doc = nlp(text)
+#     for nc in doc.noun_chunks:
+#         s = nc.text.strip()
+#         if 1 < len(s.split()) <= 6:
+#             candidates.append(s)
+#     for ent in doc.ents:
+#         s = ent.text.strip()
+#         if 1 < len(s.split()) <= 6:
+#             candidates.append(s)
+#     seen = set()
+#     uniq = []
+#     for c in candidates:
+#         lc = c.lower()
+#         if lc not in seen:
+#             seen.add(lc)
+#             uniq.append(c)
+#     return uniq[:top_n]
 
 # ---------- Gemini call ----------
 def call_gemini(prompt: str, model_name: str = GEMINI_MODEL, temperature: float = 0.0) -> str:
@@ -387,7 +386,6 @@ def generate_quiz(input_path: str, out_json: str = "quiz.json", max_questions: i
     vs = FaissStore(EMBED_MODEL)
     vs.build(chunks)
 
-    reranker = Reranker(CROSS_ENCODER_MODEL, top_n=3)
     embed_model = vs.model
 
     quiz = {"source": input_path, "questions": [], "summary": None}
@@ -405,10 +403,14 @@ def generate_quiz(input_path: str, out_json: str = "quiz.json", max_questions: i
         qtype = question_types[type_idx % len(question_types)]
         
         try:
-            hits = vs.search(chunk, top_k=8)
+            hits = vs.search(chunk, top_k=3)
+
             cand_texts = [vs.get_text(idx) for idx, _ in hits]
-            top_ctxs = reranker.rerank(chunk, cand_texts) if cand_texts else [chunk]
-            combined_ctx = "\n\n".join(top_ctxs)
+
+            if cand_texts:
+                combined_ctx = "\n\n".join(cand_texts)
+            else:
+                combined_ctx = chunk
             
             item = generate_one_question(combined_ctx, qtype, embed_model, reranker.model)
             item["source_chunk_index"] = chunk_idx
